@@ -33,7 +33,6 @@ def get_two_byte_hex_list(input_list):
         if len(elem) > 2:
             hex_elem = format(int(elem[2:]), '02x')
             hex_list.append(hex_elem)
-
             hex_elem = format(int(elem[:2]), '02x')
             hex_list.append(hex_elem)
         #hex_str = [format(int(elem), '04x') if len(elem) > 2 else format(int(elem), '02x')][0]
@@ -44,59 +43,117 @@ def get_two_byte_hex_list(input_list):
     return hex_list
 
 
-def print_packet(packet_list):
-    day = packet_list[0]
-    month = packet_list[1]
-    yearLSB = packet_list[2]
-    yearMSB = packet_list[3]
-    hour = packet_list[4]
-    min = packet_list[5]
-    sec = packet_list[6]
-    print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}:{sec}")
-    print(f"Static field: \t {packet_list[8:14]}")
-    print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
-    for i in range(14, len(packet_list), 30):
-        print(f"\t         {packet_list[i:(i+30)]}")
+def print_header(headerList):
+    print(f"STX:\t           {decoded_list[0]}")
+    print(f"Response code:\t {decoded_list[1]}, (hex = {hex(decoded_list[1])})")
+
+def print_footer(footerList):
+    print(f"\nCRC: \t          {footerList[0:2]}")
+    print(f"ETX: \t          {footerList[2]}")
+
+def print_dateTime(dateList,type):
+    # print(dateList)
+    day     = dateList[0]
+    month   = dateList[1]
+    yearLSB = dateList[2]
+    yearMSB = dateList[3]
+    hour    = dateList[4]
+    min     = dateList[5]
+    if(type == 0):
+        sec     = dateList[6]
+        print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}:{sec}")
+    else:
+        print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}")
+
+def print_packet(packet_list, valid,historyPacket):
+    # print(packet_list)
+    print_dateTime(packet_list[0:7],historyPacket)
+    if historyPacket==0:
+        print(f"Static field: \t {packet_list[7:13]}")
+        print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
+        for i in range(13, len(packet_list), 30):
+            print(f"\t         {packet_list[i:(i+30)]}")
+    else:
+        if(valid):
+            print(f"Static field: \t {packet_list[6:12]}")
+            print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
+            for i in range(12, len(packet_list), 30):
+                print(f"\t         {packet_list[i:(i+30)]}")
+        else:
+            print(f"interval period \t {packet_list[-2:]}")
+
 
 
 def print_history_output():   
-    headerSize = 3
-    bodySize = 255
+    headerSize = 4
+    bodySize = 253
     x=headerSize
-    # print(decoded_list[0:x])
-    print(f"STX:\t           {decoded_list[0]}")
-    print(f"Response code:\t {decoded_list[1]}, (hex = {hex(decoded_list[1])})")
-    print(f"Number of packets {decoded_list[2]}")
-    flag = True
-    while(flag):
-        y=x
-        x=x+bodySize
-        # print(f" y value {y}, x value {x}, len {len(decoded_list)}")
-        print_packet(decoded_list[y:x])
-        if((x+bodySize) > len(decoded_list)):
-            # print(decoded_list[y:(x-1)])
-            print(f"crc {decoded_list[-3:-1]}")
-            print(f"etx {decoded_list[-1]}")
+    print(decoded_list[0:x])
+    print_header(decoded_list[0:2])
+    if(decoded_list[1] == 3):
+        print(f" invalide packet , contents are {decoded_list}")
+    else:
+        print(f"Number of packets {decoded_list[2]}")
+        MaxPackets = decoded_list[2]
+        currentPacket = 0
+        if(decoded_list[2]>0):
+            flag = True
+        else:
             flag = False
+        nextTimeSlotData = decoded_list[3]
+        while(flag):
+            y=x
+            x=x+bodySize
+            currentPacket = currentPacket + 1
+            # print(f" y value {y}, x value {x}, len {len(decoded_list)}")
+            # print_packet(decoded_list[y:x-1])
+            if( nextTimeSlotData == 1):
+                print("Data present in next time slot \n")
+                print_packet(decoded_list[y:x-1],True,1)
+                nextTimeSlotData = decoded_list[x-1]
+            elif(nextTimeSlotData == 0):
+                print("Data not present in next slot\n")
+                x=y+9
+                print_packet(decoded_list[y:x-1],False,1)
+                nextTimeSlotData = decoded_list[x-1]
+            # if((x+bodySize) > len(decoded_list)):
+            if(currentPacket > MaxPackets):
+                print_footer(decoded_list[-3:])
+                flag = False
+
+def print_Alarm():
+    print_header(decoded_list[0:2])
+    NTDStatus = decoded_list[2]
+    ETDAlarm = decoded_list[3]
+    NumberOfSensors = decoded_list[4]
+    sensornum = 0
+    print(f"Alarm:{ETDAlarm} \nNumberOfSensors:{NumberOfSensors}")
+    sensorAlarm = decoded_list[5:-3]
+    # print(f"Maker:{maker} \nModel:{model} \nVersion:{version}")
+    for index in range(0, len(sensorAlarm), 2):
+        Sensortype = sensorAlarm[index]
+        SensorAlarm = sensorAlarm[index+1]
+        sensornum=sensornum+1
+        print(f" \tsensor {sensornum}, type {Sensortype}, alarm {SensorAlarm}")
+    print_footer(decoded_list[-3:])
+
+def print_Maker():
+    print_header(decoded_list[0:2])
+    maker = decoded_list[2]
+    model = decoded_list[3]
+    version = decoded_list[4]
+    print(f"Maker:{maker} \nModel:{model} \nVersion:{version}")
+
+def print_DayTime():
+    print_header(decoded_list[0:2])
+    print_dateTime(decoded_list[2:10],0)
 
 
 def print_output():
-    print(f"STX:\t           {decoded_list[0]}")
-    print(f"Response code:\t {decoded_list[1]}, (hex = {hex(decoded_list[1])})")
-    day = decoded_list[2]
-    month = decoded_list[3]
-    yearLSB = decoded_list[4]
-    yearMSB = decoded_list[5]
-    hour = decoded_list[6]
-    min = decoded_list[7]
-    sec = decoded_list[8]
-    print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}:{sec}")
-    print(f"Static field: \t {decoded_list[10:16]}")
-    print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
-    for i in range(16, len(decoded_list)-3, 30):
-        print(f"\t         {decoded_list[i:(i+30)]}")
-    print(f"CRC: \t          {decoded_list[len(decoded_list)-3:len(decoded_list)-1]}")
-    print(f"ETX: \t          {decoded_list[len(decoded_list)-1]}")
+    print_header(decoded_list[0:2])
+    print_packet(decoded_list[2:-3],True,0)
+    print_footer(decoded_list[-3:])
+
 
 def removeDLE():
     skip_next = False
@@ -118,20 +175,20 @@ def removeDLE():
 
 def close_connection():
     removeDLE()
-    # print(decoded_list)
+    print(decoded_list)
+    input_choice = int(choice)
     # print_output()
-    if (int(choice) == 1):
+    if (input_choice == 1):
         print_output()
-    else:
+    elif(input_choice == 2):
         print_history_output()
-   
-# def parse_received_packet():
-#     # index = 0
-#     # if recevied_data[index]!=STX:
-#     #     return
-#     # else:
-#     # removeDLE()
-#     # print_output_test()
+    elif(input_choice == 3):
+        print_DayTime()
+    elif(input_choice == 4):
+        print_Maker()
+    elif(input_choice == 5):
+        print(decoded_list)
+        print_Alarm()
 
 
 def tcp_client(host, port, message):
@@ -236,6 +293,20 @@ if __name__ == "__main__":
         message_to_send= f'{STX}{joinedList}{ETX}'
         # message_to_send = "02201085435603"  #correct CRC order for LAST period data 
         print(message_to_send)
+        # decoded_list=[2, 134, 5, 1, 25, 3, 24, 20, 19, 50, 44, 1, 5, 1, 1, 8, 1, 38, 0, 0, 0, 0, 0, 0, 0, 76, 0, 168, 1, 129, 0, 2, 1, 2, 19, 0, 19, 0, 2, 3, 38, 0, 0, 0, 0, 0, 2, 38, 0, 0, 0, 0, 0, 1, 0, 77, 0, 169, 1, 130, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 3, 36, 0, 0, 0, 0, 0, 1, 0, 76, 0, 170, 1, 129, 0, 2, 1, 2, 0, 0, 36, 0, 2, 3, 36, 0, 0, 0, 0, 0, 4, 37, 0, 0, 0, 0, 0, 1, 0, 74, 0, 171, 1, 130, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 5, 38, 0, 0, 0, 0, 0, 0, 0, 75, 0, 172, 1, 131, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 6, 38, 0, 0, 0, 0, 0, 1, 0, 76, 0, 173, 1, 132, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 7, 38, 0, 0, 0, 0, 0, 1, 0, 76, 0, 174, 1, 133, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 8, 38, 0, 0, 0, 0, 0, 1, 0, 75, 0, 175, 1, 134, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 1, 25, 3, 24, 20, 19, 55, 44, 1, 5, 1, 1, 8, 1, 37, 0, 0, 0, 0, 0, 0, 0, 76, 0, 168, 1, 134, 0, 2, 1, 2, 18, 0, 19, 0, 2, 3, 37, 0, 0, 0, 0, 0, 2, 37, 0, 0, 0, 0, 0, 1, 0, 77, 0, 169, 1, 135, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 3, 38, 0, 0, 0, 0, 0, 1, 0, 74, 0, 170, 1, 137, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 4, 38, 0, 0, 0, 0, 0, 1, 0, 75, 0, 171, 1, 138, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 5, 38, 0, 0, 0, 0, 0, 0, 0, 76, 0, 172, 1, 139, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 6, 38, 0, 0, 0, 0, 0, 1, 0, 77, 0, 173, 1, 140, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 7, 37, 0, 0, 0, 0, 0, 1, 0, 74, 0, 173, 1, 139, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 8, 37, 0, 0, 0, 0, 0, 1, 0, 75, 0, 174, 1, 140, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 0, 25, 3, 24, 20, 20, 0, 0, 1, 25, 3, 24, 20, 20, 5, 44, 1, 5, 1, 1, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 1, 25, 3, 24, 20, 20, 9, 44, 1, 5, 1, 1, 8, 1, 1, 0, 0, 0, 0, 0, 0, 0, 50, 0, 164, 1, 0, 0, 2, 1, 2, 1, 0, 0, 0, 2, 3, 1, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 1, 0, 97, 0, 165, 1, 1, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 0, 1, 0, 98, 0, 166, 1, 2, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 0, 1, 0, 99, 0, 167, 1, 3, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 5, 1, 0, 0, 0, 0, 0, 0, 0, 100, 0, 168, 1, 4, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 6, 1, 0, 0, 0, 0, 0, 1, 0, 101, 0, 169, 1, 5, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 7, 1, 0, 0, 0, 0, 0, 1, 0, 102, 0, 170, 1, 6, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 8, 1, 0, 0, 0, 0, 0, 1, 0, 103, 0, 171, 1, 7, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 177, 200, 3]
+        # for data not present in the response packet only time present
+        # decoded_list= [2, 134, 5, 1, 25, 3, 24, 20, 19, 50, 44, 1, 5, 1, 1, 8, 1, 38, 0, 0, 0, 0, 0, 0, 0, 76, 0, 168, 1, 129, 0, 2, 1, 2, 19, 0, 19, 0, 2, 3, 38, 0, 0, 0, 0, 0, 2, 38, 0, 0, 0, 0, 0, 1, 0, 77, 0, 169, 1, 130, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 3, 36, 0, 0, 0, 0, 0, 1, 0, 76, 0, 170, 1, 129, 0, 2, 1, 2, 0, 0, 36, 0, 2, 3, 36, 0, 0, 0, 0, 0, 4, 37, 0, 0, 0, 0, 0, 1, 0, 74, 0, 171, 1, 130, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 5, 38, 0, 0, 0, 0, 0, 0, 0, 75, 0, 172, 1, 131, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 6, 38, 0, 0, 0, 0, 0, 1, 0, 76, 0, 173, 1, 132, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 7, 38, 0, 0, 0, 0, 0, 1, 0, 76, 0, 174, 1, 133, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 8, 38, 0, 0, 0, 0, 0, 1, 0, 75, 0, 175, 1, 134, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 1, 25, 3, 24, 20, 19, 55, 44, 1, 5, 1, 1, 8, 1, 37, 0, 0, 0, 0, 0, 0, 0, 76, 0, 168, 1, 134, 0, 2, 1, 2, 18, 0, 19, 0, 2, 3, 37, 0, 0, 0, 0, 0, 2, 37, 0, 0, 0, 0, 0, 1, 0, 77, 0, 169, 1, 135, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 3, 38, 0, 0, 0, 0, 0, 1, 0, 74, 0, 170, 1, 137, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 4, 38, 0, 0, 0, 0, 0, 1, 0, 75, 0, 171, 1, 138, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 5, 38, 0, 0, 0, 0, 0, 0, 0, 76, 0, 172, 1, 139, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 6, 38, 0, 0, 0, 0, 0, 1, 0, 77, 0, 173, 1, 140, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 7, 37, 0, 0, 0, 0, 0, 1, 0, 74, 0, 173, 1, 139, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 8, 37, 0, 0, 0, 0, 0, 1, 0, 75, 0, 174, 1, 140, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 0, 25, 3, 24, 20, 20, 0, 44, 1, 1, 25, 3, 24, 20, 20, 5, 44, 1, 5, 1, 1, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 1, 25, 3, 24, 20, 20, 9, 44, 1, 5, 1, 1, 8, 1, 1, 0, 0, 0, 0, 0, 0, 0, 50, 0, 164, 1, 0, 0, 2, 1, 2, 1, 0, 0, 0, 2, 3, 1, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 1, 0, 97, 0, 165, 1, 1, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 0, 1, 0, 98, 0, 166, 1, 2, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 0, 1, 0, 99, 0, 167, 1, 3, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 5, 1, 0, 0, 0, 0, 0, 0, 0, 100, 0, 168, 1, 4, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 6, 1, 0, 0, 0, 0, 0, 1, 0, 101, 0, 169, 1, 5, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 7, 1, 0, 0, 0, 0, 0, 1, 0, 102, 0, 170, 1, 6, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 8, 1, 0, 0, 0, 0, 0, 1, 0, 103, 0, 171, 1, 7, 0, 2, 1, 2, 0, 0, 1, 0, 2, 3, 1, 0, 0, 0, 0, 0, 164, 120, 3]
+        # for data not present for consecutive 5 times
+        # decoded_list= [2, 134, 10, 1, 26, 3, 24, 20, 12, 45, 44, 1, 5, 1, 1, 8, 1, 38, 0, 0, 0, 0, 0, 0, 0, 75, 0, 168, 1, 124, 0, 2, 1, 2, 19, 0, 19, 0, 2, 3, 38, 0, 0, 0, 0, 0, 2, 38, 0, 0, 0, 0, 0, 1, 0, 76, 0, 169, 1, 125, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 3, 38, 0, 0, 0, 0, 0, 1, 0, 77, 0, 170, 1, 126, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 4, 37, 0, 0, 0, 0, 0, 1, 0, 75, 0, 171, 1, 129, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 5, 37, 0, 0, 0, 0, 0, 0, 0, 75, 0, 172, 1, 130, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 6, 37, 0, 0, 0, 0, 0, 1, 0, 76, 0, 173, 1, 131, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 7, 37, 0, 0, 0, 0, 0, 1, 0, 77, 0, 174, 1, 132, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 8, 37, 0, 0, 0, 0, 0, 1, 0, 76, 0, 175, 1, 133, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 1, 26, 3, 24, 20, 12, 50, 44, 1, 5, 1, 1, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 1, 26, 3, 24, 20, 12, 50, 44, 1, 5, 1, 1, 8, 1, 32, 0, 0, 0, 0, 0, 0, 0, 77, 0, 168, 1, 124, 0, 2, 1, 2, 16, 0, 16, 0, 2, 3, 32, 0, 0, 0, 0, 0, 2, 32, 0, 0, 0, 0, 0, 1, 0, 76, 0, 169, 1, 125, 0, 2, 1, 2, 0, 0, 32, 0, 2, 3, 32, 0, 0, 0, 0, 0, 3, 32, 0, 0, 0, 0, 0, 1, 0, 77, 0, 170, 1, 126, 0, 2, 1, 2, 0, 0, 32, 0, 2, 3, 32, 0, 0, 0, 0, 0, 4, 32, 0, 0, 0, 0, 0, 1, 0, 78, 0, 171, 1, 127, 0, 2, 1, 2, 0, 0, 32, 0, 2, 3, 32, 0, 0, 0, 0, 0, 5, 31, 0, 0, 0, 0, 0, 0, 0, 78, 0, 171, 1, 124, 0, 2, 1, 2, 0, 0, 31, 0, 2, 3, 31, 0, 0, 0, 0, 0, 6, 31, 0, 0, 0, 0, 0, 1, 0, 75, 0, 172, 1, 125, 0, 2, 1, 2, 0, 0, 31, 0, 2, 3, 31, 0, 0, 0, 0, 0, 7, 31, 0, 0, 0, 0, 0, 1, 0, 76, 0, 173, 1, 126, 0, 2, 1, 2, 0, 0, 31, 0, 2, 3, 31, 0, 0, 0, 0, 0, 8, 31, 0, 0, 0, 0, 0, 1, 0, 77, 0, 174, 1, 127, 0, 2, 1, 2, 0, 0, 31, 0, 2, 3, 31, 0, 0, 0, 0, 0, 1, 26, 3, 24, 20, 12, 57, 44, 1, 5, 1, 1, 8, 1, 17, 0, 0, 0, 0, 0, 0, 0, 74, 0, 167, 1, 64, 0, 2, 1, 2, 9, 0, 8, 0, 2, 3, 17, 0, 0, 0, 0, 0, 2, 16, 0, 0, 0, 0, 0, 1, 0, 77, 0, 169, 1, 63, 0, 2, 1, 2, 0, 0, 16, 0, 2, 3, 16, 0, 0, 0, 0, 0, 3, 16, 0, 0, 0, 0, 0, 1, 0, 78, 0, 170, 1, 64, 0, 2, 1, 2, 0, 0, 16, 0, 2, 3, 16, 0, 0, 0, 0, 0, 4, 17, 0, 0, 0, 0, 0, 1, 0, 79, 0, 171, 1, 68, 0, 2, 1, 2, 0, 0, 17, 0, 2, 3, 17, 0, 0, 0, 0, 0, 5, 17, 0, 0, 0, 0, 0, 0, 0, 77, 0, 172, 1, 69, 0, 2, 1, 2, 0, 0, 17, 0, 2, 3, 17, 0, 0, 0, 0, 0, 6, 17, 0, 0, 0, 0, 0, 1, 0, 77, 0, 173, 1, 70, 0, 2, 1, 2, 0, 0, 17, 0, 2, 3, 17, 0, 0, 0, 0, 0, 7, 17, 0, 0, 0, 0, 0, 1, 0, 78, 0, 174, 1, 71, 0, 2, 1, 2, 0, 0, 17, 0, 2, 3, 17, 0, 0, 0, 0, 0, 8, 17, 0, 0, 0, 0, 0, 1, 0, 79, 0, 175, 1, 72, 0, 2, 1, 2, 0, 0, 17, 0, 2, 3, 17, 0, 0, 0, 0, 0, 1, 26, 3, 24, 20, 13, 0, 44, 1, 5, 1, 1, 8, 1, 38, 0, 0, 0, 0, 0, 0, 0, 74, 0, 168, 1, 130, 0, 2, 1, 2, 19, 0, 19, 0, 2, 3, 38, 0, 0, 0, 0, 0, 2, 38, 0, 0, 0, 0, 0, 1, 0, 75, 0, 169, 1, 131, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 3, 38, 0, 0, 0, 0, 0, 1, 0, 76, 0, 170, 1, 132, 0, 2, 1, 2, 0, 0, 38, 0, 2, 3, 38, 0, 0, 0, 0, 0, 4, 37, 0, 0, 0, 0, 0, 1, 0, 76, 0, 170, 1, 131, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 5, 37, 0, 0, 0, 0, 0, 0, 0, 74, 0, 171, 1, 132, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 6, 37, 0, 0, 0, 0, 0, 1, 0, 75, 0, 172, 1, 133, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 7, 37, 0, 0, 0, 0, 0, 1, 0, 76, 0, 173, 1, 134, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 8, 37, 0, 0, 0, 0, 0, 1, 0, 77, 0, 174, 1, 135, 0, 2, 1, 2, 0, 0, 37, 0, 2, 3, 37, 0, 0, 0, 0, 0, 0, 26, 3, 24, 20, 13, 5, 44, 1, 0, 26, 3, 24, 20, 13, 10, 44, 1, 0, 26, 3, 24, 20, 13, 15, 44, 1, 0, 26, 3, 24, 20, 13, 20, 44, 1, 0, 26, 3, 24, 20, 13, 25, 44, 1, 148, 251, 3]
+        # print_history_output()
+    elif(int(choice) == 3):
+        message_to_send = "02200aaca703"  #correct CRC order for LAST period data 
+    elif(int(choice) == 4):
+        message_to_send = "02200b8db703"  #correct CRC order for LAST period data 
+    elif(int(choice) == 5):
+        message_to_send = "022009cf9703"  #correct CRC order for LAST period data 
     else:
         print(f"Invalid input")
-    tcp_client(server_host, server_port, message_to_send)
+
+    if(int(choice) != 7):
+        tcp_client(server_host, server_port, message_to_send)
