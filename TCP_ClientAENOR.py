@@ -86,7 +86,7 @@ def print_packet(packet_list, valid,historyPacket):
 
 def print_history_output():   
     headerSize = 4
-    bodySize = 253
+    bodySize = (253 * 1)
     x=headerSize
     print(decoded_list[0:x])
     print_header(decoded_list[0:2])
@@ -117,7 +117,7 @@ def print_history_output():
                 print_packet(decoded_list[y:x-1],False,1)
                 nextTimeSlotData = decoded_list[x-1]
             # if((x+bodySize) > len(decoded_list)):
-            if(currentPacket > MaxPackets):
+            if(currentPacket >= MaxPackets):
                 print_footer(decoded_list[-3:])
                 flag = False
 
@@ -175,7 +175,14 @@ def removeDLE():
 
 def close_connection():
     removeDLE()
-    print(decoded_list)
+    # print(decoded_list)
+    decoded_hex_list=[]
+    for elem in decoded_list:
+        #hex_elem = format(int(decoded_list(elem)), '02x')
+        hex_elem = hex(elem)
+        decoded_hex_list.append(hex_elem)
+    print(decoded_hex_list)
+
     input_choice = int(choice)
     # print_output()
     if (input_choice == 1):
@@ -254,11 +261,13 @@ def form_packet(input_string):
         crc_hex = format(crc, 'x')
 
         crc_hex_list = hex_list
-        if len(crc_hex) > 2:
-            crc_hex_list.append(crc_hex[2:])
-            crc_hex_list.append(crc_hex[:2])
-        else:
-            crc_hex_list.append(crc_hex)
+        print(f"crc_hex = {crc_hex}")
+        # if len(crc_hex) > 2:
+        #     crc_hex_list.append(crc_hex[2:])
+        #     crc_hex_list.append(crc_hex[:2])
+        # else:
+        #     crc_hex_list.append(crc_hex)
+        crc_hex_list.append(crc_hex)
 
         hex_list = add_dle(crc_hex_list)
         print(f"{hex_list}")
@@ -279,8 +288,10 @@ def form_packet(input_string):
 
 
 if __name__ == "__main__":
-    server_host = "192.168.99.26"
-    server_port = 9001
+    # server_host = "192.168.99.26"
+    # server_port = 9001
+    server_host = "62.232.56.36"
+    server_port = 4301
     # message_to_send = "02201085564303" // wrong crc order 
     #message_to_send =   "0220108612108318140f1e12108318140f32000074be03"  #outpu from test1.py  
    
@@ -299,7 +310,8 @@ if __name__ == "__main__":
     choice = input(" type 1 for LAST period data or type 2 for History data:")
 
     if(int(choice) == 1):
-        message_to_send = "02201085435603"  #correct CRC order for LAST period data 
+        # message_to_send = "02201085435603"  #correct CRC order for LAST period data 
+        message_to_send = "02201085564303"  #correct CRC order for LAST period data 
     elif(int(choice) == 2):
         HISTORY_REQUEST = '06'
         start_time = input("Start date and time comma saperated (dd,mm,yyyy,hh,min)")
@@ -310,9 +322,11 @@ if __name__ == "__main__":
         message_to_send = form_packet(input_string)
 
     elif(int(choice) == 3):
-        message_to_send = "02200aaca703"  #correct CRC order for LAST period data 
+        # message_to_send = "02200aaca703"  #correct CRC order for LAST period data 
+        message_to_send = "02200aa7ac03"  #correct CRC order for LAST period data 
     elif(int(choice) == 4):
-        message_to_send = "02200b8db703"  #correct CRC order for LAST period data 
+        # message_to_send = "02200b8db703"  #correct CRC order for LAST period data 
+        message_to_send = "02200bb78d03"  #correct CRC order for LAST period data 
     elif(int(choice) == 5):
         message_to_send = "022009cf9703"  #correct CRC order for LAST period data 
     elif(int(choice) == 6):
