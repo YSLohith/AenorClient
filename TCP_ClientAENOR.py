@@ -29,41 +29,59 @@ def calculate_crc(buffer):
 
 def get_two_byte_hex_list(input_list):
     hex_list = []
+    hex_list_yearCorrected = []
     for elem in input_list:
+        # if len(elem) > 2:
+        #     hex_elem = format(int(elem[2:]), '02x')
+        #     hex_list.append(hex_elem)
+        #     hex_elem = format(int(elem[:2]), '02x')
+        #     hex_list.append(hex_elem)
+        # #hex_str = [format(int(elem), '04x') if len(elem) > 2 else format(int(elem), '02x')][0]
+        # else:
+        #     hex_elem = format(int(elem), '02x')
+        #     hex_list.append((hex_elem))
+    # return hex_list
         if len(elem) > 2:
-            hex_elem = format(int(elem[2:]), '02x')
-            hex_list.append(hex_elem)
-            hex_elem = format(int(elem[:2]), '02x')
-            hex_list.append(hex_elem)
-        #hex_str = [format(int(elem), '04x') if len(elem) > 2 else format(int(elem), '02x')][0]
+            hex_elem = format(int(elem), '04x')
         else:
             hex_elem = format(int(elem), '02x')
-            hex_list.append((hex_elem))
-    
-    return hex_list
+        hex_list.append((hex_elem))
+
+    for elem in hex_list:
+        if len(elem) > 2:
+            hex_list_yearCorrected.append(elem[2:])
+            hex_list_yearCorrected.append(elem[:2])
+        else:
+            hex_list_yearCorrected.append(elem)
+    print(f" year corrected values \n {hex_list_yearCorrected}")
+    return hex_list_yearCorrected
 
 
 def print_header(headerList):
-    print(f"STX:\t           {decoded_list[0]}")
-    print(f"Response code:\t {decoded_list[1]}, (hex = {hex(decoded_list[1])})")
+    print(f"STX:               {decoded_list[0]}")
+    print(f"Address:           {decoded_list[1]} , (hex = {hex(decoded_list[1])})")
+    print(f"Response code:     {decoded_list[2]}, (hex = {hex(decoded_list[2])})")
 
 def print_footer(footerList):
-    print(f"\nCRC: \t          {footerList[0:2]}")
+    print(f"\nCRC: \t          {footerList[0:2]}  (hex = {hex(footerList[0])}, {hex(footerList[1])})")
     print(f"ETX: \t          {footerList[2]}")
 
 def print_dateTime(dateList,type):
     # print(dateList)
     day     = dateList[0]
     month   = dateList[1]
-    yearLSB = dateList[2]
-    yearMSB = dateList[3]
+    yearLSB = format(dateList[2], '02x')
+    yearMSB = format(dateList[3], '02x')
+    yearFullForm = int(yearMSB+yearLSB,16)  
     hour    = dateList[4]
     min     = dateList[5]
     if(type == 0):
         sec     = dateList[6]
-        print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}:{sec}")
+        # print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}:{sec}")
+        print(f"Time: \t         {day}.{month}.{yearFullForm}   {hour}:{min}:{sec}")
     else:
-        print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}")
+        # print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}")
+        print(f"Time: \t         {day}.{month}.{yearFullForm}   {hour}:{min}")
 
 def print_packet(packet_list, valid,historyPacket):
     # print(packet_list)
@@ -71,36 +89,36 @@ def print_packet(packet_list, valid,historyPacket):
     if historyPacket==0:
         print(f"Static field: \t {packet_list[7:13]}")
         print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
-        for i in range(13, len(packet_list), 30):
-            print(f"\t         {packet_list[i:(i+30)]}")
+        for i in range(13, len(packet_list), EACH_SENSOR_DATA_SIZE):
+            print(f"\t         {packet_list[i:(i+EACH_SENSOR_DATA_SIZE)]}")
     else:
         if(valid):
             print(f"Static field: \t {packet_list[6:12]}")
             print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
-            for i in range(12, len(packet_list), 30):
-                print(f"\t         {packet_list[i:(i+30)]}")
+            for i in range(12, len(packet_list), EACH_SENSOR_DATA_SIZE):
+                print(f"\t         {packet_list[i:(i+EACH_SENSOR_DATA_SIZE)]}")
         else:
             print(f"interval period \t {packet_list[-2:]}")
 
 
 
 def print_history_output():   
-    headerSize = 4
-    bodySize = (253 * 1)
+    headerSize = 5
+    bodySize = (213 * 1) #(EACH_SENSOR_DATA_SIZE * NUM_OF_SENSORS) #
     x=headerSize
     print(decoded_list[0:x])
-    print_header(decoded_list[0:2])
-    if(decoded_list[1] == 3):
+    print_header(decoded_list[0:HEADER_SIZE])
+    if(decoded_list[2] == 3):
         print(f" invalide packet , contents are {decoded_list}")
     else:
-        print(f"Number of packets {decoded_list[2]}")
-        MaxPackets = decoded_list[2]
+        print(f"Number of packets  {decoded_list[3]}")
+        MaxPackets = decoded_list[3]
         currentPacket = 0
         if(decoded_list[2]>0):
             flag = True
         else:
             flag = False
-        nextTimeSlotData = decoded_list[3]
+        nextTimeSlotData = decoded_list[4]
         while(flag):
             y=x
             x=x+bodySize
@@ -122,13 +140,17 @@ def print_history_output():
                 flag = False
 
 def print_Alarm():
-    print_header(decoded_list[0:2])
-    NTDStatus = decoded_list[2]
-    ETDAlarm = decoded_list[3]
-    NumberOfSensors = decoded_list[4]
+    print_header(decoded_list[0:HEADER_SIZE])
+    index = HEADER_SIZE
+    NTDStatus = decoded_list[index]
+    index +=1
+    ETDAlarm = decoded_list[index]
+    index +=1
+    NumberOfSensors = decoded_list[index]
+    index +=1
     sensornum = 0
-    print(f"Alarm:{ETDAlarm} \nNumberOfSensors:{NumberOfSensors}")
-    sensorAlarm = decoded_list[5:-3]
+    print(f"NTDStaus:\t{NTDStatus} \nAlarm:\t{ETDAlarm} \nNumberOfSensors:\t{NumberOfSensors}")
+    sensorAlarm = decoded_list[index:-3]
     # print(f"Maker:{maker} \nModel:{model} \nVersion:{version}")
     for index in range(0, len(sensorAlarm), 2):
         Sensortype = sensorAlarm[index]
@@ -138,20 +160,24 @@ def print_Alarm():
     print_footer(decoded_list[-3:])
 
 def print_Maker():
-    print_header(decoded_list[0:2])
-    maker = decoded_list[2]
-    model = decoded_list[3]
-    version = decoded_list[4]
-    print(f"Maker:{maker} \nModel:{model} \nVersion:{version}")
+    print_header(decoded_list[0:HEADER_SIZE])
+    index = HEADER_SIZE
+    maker = decoded_list[index]
+    index +=1
+    model = decoded_list[index]
+    index +=1
+    version = decoded_list[index]
+    print(f"Maker:\t{maker} \nModel:\t{model} \nVersion:\t{version}")
 
 def print_DayTime():
-    print_header(decoded_list[0:2])
-    print_dateTime(decoded_list[2:10],0)
+    print_header(decoded_list[0:HEADER_SIZE])
+    print_dateTime(decoded_list[HEADER_SIZE:],0)
+    print_footer(decoded_list[-3:])
 
 
 def print_output():
-    print_header(decoded_list[0:2])
-    print_packet(decoded_list[2:-3],True,0)
+    print_header(decoded_list[0:HEADER_SIZE])
+    print_packet(decoded_list[HEADER_SIZE:-3],True,0)
     print_footer(decoded_list[-3:])
 
 
@@ -174,14 +200,18 @@ def removeDLE():
                 decoded_list.append(decoded_byte)
 
 def close_connection():
+    print(" Data received with DLE ")
+    print(recevied_data)
     removeDLE()
+    print(" \nAfter removing DLE")
     # print(decoded_list)
     decoded_hex_list=[]
     for elem in decoded_list:
-        #hex_elem = format(int(decoded_list(elem)), '02x')
-        hex_elem = hex(elem)
+        hex_elem = format(int(elem), '02x')
+        # hex_elem = hex(elem)
         decoded_hex_list.append(hex_elem)
     print(decoded_hex_list)
+    print("\nData sorted as below ")
 
     input_choice = int(choice)
     # print_output()
@@ -198,6 +228,7 @@ def close_connection():
         print_Alarm()
     elif(input_choice == 6):
         print(decoded_list)
+    print("\n")
 
 
 def tcp_client(host, port, message):
@@ -228,7 +259,8 @@ def tcp_client(host, port, message):
             # print("Received from server:", data)
             
             if data_decimal==CLOSE_ETX:
-                print(f"\nPattern '{ETX}' found. Closing the connection.")
+                print(f"\n Received ETX='{ETX}'. So closing the connection.")
+                print("Resonse from server is \n")
                 break  
 
     except socket.timeout:
@@ -298,6 +330,9 @@ if __name__ == "__main__":
     ETX = '03'
     STX = '02'
     CLOSE_ETX = 3
+    HEADER_SIZE = 3
+    EACH_SENSOR_DATA_SIZE = 25
+    NUM_OF_SENSORS = 8
     recevied_data =[]
     decoded_list = []
     AENOR_DLE_DECODE_CHARACTER = 0x7F
@@ -307,7 +342,7 @@ if __name__ == "__main__":
     STR_ADDR = '32'
     INDICATION = '0000'
     
-    choice = input(" type 1 for LAST period data or type 2 for History data:")
+    choice = input(" type number 1 to 6 to send appropriate request:")
 
     if(int(choice) == 1):
         # message_to_send = "02201085435603"  #correct CRC order for LAST period data 
@@ -328,10 +363,11 @@ if __name__ == "__main__":
         # message_to_send = "02200b8db703"  #correct CRC order for LAST period data 
         message_to_send = "02200bb78d03"  #correct CRC order for LAST period data 
     elif(int(choice) == 5):
-        message_to_send = "022009cf9703"  #correct CRC order for LAST period data 
+        # message_to_send = "022009cf9703"  #correct CRC order for LAST period data 
+        message_to_send = "02200997cf03"  #correct CRC order for LAST period data 
     elif(int(choice) == 6):
         SET_REQUEST = '03'
-        start_time = input("Enter set date&time comma saperated (dd,mm,yyyy,hh,min)")
+        start_time = input("Enter set date&time comma saperated (dd,mm,yyyy,hh,min,sec)")
         input_string = f'{STR_ADDR},{SET_REQUEST},{start_time}'
         print(f"{input_string}")
 
