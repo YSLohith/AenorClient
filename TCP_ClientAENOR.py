@@ -87,15 +87,19 @@ def print_packet(packet_list, valid,historyPacket):
     # print(packet_list)
     print_dateTime(packet_list[0:7],historyPacket)
     if historyPacket==0:
-        print(f"Static field: \t {packet_list[7:13]}")
+        start = TIME_SIZE_WITH_SEC
+        end = TIME_SIZE_WITH_SEC + SIZE_STATIC_FIELD
+        print(f"Static field: \t {packet_list[start:end]}")
         print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
-        for i in range(13, len(packet_list), EACH_SENSOR_DATA_SIZE):
+        for i in range(end, len(packet_list), EACH_SENSOR_DATA_SIZE):
             print(f"\t         {packet_list[i:(i+EACH_SENSOR_DATA_SIZE)]}")
     else:
         if(valid):
-            print(f"Static field: \t {packet_list[6:12]}")
+            start = TIME_SIZE_WITHOUT_SEC
+            end = TIME_SIZE_WITHOUT_SEC + SIZE_STATIC_FIELD
+            print(f"Static field: \t {packet_list[start:end]}")
             print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
-            for i in range(12, len(packet_list), EACH_SENSOR_DATA_SIZE):
+            for i in range(end, len(packet_list), EACH_SENSOR_DATA_SIZE):
                 print(f"\t         {packet_list[i:(i+EACH_SENSOR_DATA_SIZE)]}")
         else:
             print(f"interval period \t {packet_list[-2:]}")
@@ -320,10 +324,10 @@ def form_packet(input_string):
 
 
 if __name__ == "__main__":
-    # server_host = "192.168.99.26"
-    # server_port = 9001
-    server_host = "62.232.56.36"
-    server_port = 4301
+    server_host = "192.168.99.26"
+    server_port = 9001
+    # server_host = "62.232.56.36"
+    # server_port = 4301
     # message_to_send = "02201085564303" // wrong crc order 
     #message_to_send =   "0220108612108318140f1e12108318140f32000074be03"  #outpu from test1.py  
    
@@ -333,6 +337,10 @@ if __name__ == "__main__":
     HEADER_SIZE = 3
     EACH_SENSOR_DATA_SIZE = 25
     NUM_OF_SENSORS = 8
+    TIME_SIZE_WITH_SEC = 7
+    TIME_SIZE_WITHOUT_SEC = 6
+    NUM_OF_SENSORS = 8
+    SIZE_STATIC_FIELD = 6
     recevied_data =[]
     decoded_list = []
     AENOR_DLE_DECODE_CHARACTER = 0x7F
