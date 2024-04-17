@@ -31,16 +31,6 @@ def get_two_byte_hex_list(input_list):
     hex_list = []
     hex_list_yearCorrected = []
     for elem in input_list:
-        # if len(elem) > 2:
-        #     hex_elem = format(int(elem[2:]), '02x')
-        #     hex_list.append(hex_elem)
-        #     hex_elem = format(int(elem[:2]), '02x')
-        #     hex_list.append(hex_elem)
-        # #hex_str = [format(int(elem), '04x') if len(elem) > 2 else format(int(elem), '02x')][0]
-        # else:
-        #     hex_elem = format(int(elem), '02x')
-        #     hex_list.append((hex_elem))
-    # return hex_list
         if len(elem) > 2:
             hex_elem = format(int(elem), '04x')
         else:
@@ -79,9 +69,11 @@ def print_dateTime(dateList,type):
         sec     = dateList[6]
         # print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}:{sec}")
         print(f"Time: \t         {day}.{month}.{yearFullForm}   {hour}:{min}:{sec}")
-    else:
+    elif(type == 1):
         # print(f"Time: \t         {day}.{month}.{yearMSB}{yearLSB}   {hour}:{min}")
         print(f"Time: \t         {day}.{month}.{yearFullForm}   {hour}:{min}")
+    elif(type == 2):
+        print(f"Time: \t         {day}.{month}.{yearFullForm}   {hour}")
 
 def print_packet(packet_list, valid,historyPacket):
     # print(packet_list)
@@ -93,7 +85,7 @@ def print_packet(packet_list, valid,historyPacket):
         print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
         for i in range(end, len(packet_list), EACH_SENSOR_DATA_SIZE):
             print(f"\t         {packet_list[i:(i+EACH_SENSOR_DATA_SIZE)]}")
-    else:
+    elif historyPacket==1:
             start = TIME_SIZE_WITHOUT_SEC
             end = TIME_SIZE_WITHOUT_SEC + SIZE_STATIC_FIELD + 1
             print(f"Static field: \t {packet_list[start:end]}")
@@ -106,6 +98,13 @@ def print_packet(packet_list, valid,historyPacket):
                 print(f"interval period \t {packet_list[-2:]}")
             # print(f"valid_field = {valid_field}\n")
             # return valid_field    
+    elif historyPacket==2:
+        start = TIME_SIZE_WITHOUT_MIN_SEC
+        end = TIME_SIZE_WITHOUT_MIN_SEC + SIZE_STATIC_FIELD - 1
+        print(f"Static field: \t {packet_list[start:end]}")
+        print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
+        for i in range(end, len(packet_list), EACH_SENSOR_DATA_SIZE):
+            print(f"\t         {packet_list[i:(i+EACH_SENSOR_DATA_SIZE)]}")
 
 
 
@@ -204,6 +203,12 @@ def print_output():
     print_footer(decoded_list[-3:])
 
 
+def print_HourOutput():
+    print_header(decoded_list[0:HEADER_SIZE])
+    print_packet(decoded_list[HEADER_SIZE:-3],True,2)
+    print_footer(decoded_list[-3:])
+
+
 def removeDLE():
     skip_next = False
     for byte in range(0, len(recevied_data), 1):
@@ -224,16 +229,16 @@ def removeDLE():
 
 def close_connection():
     print(" Data received with DLE ")
-    print(recevied_data)
+    # print(recevied_data)
     removeDLE()
     print(" \nAfter removing DLE")
-    print(decoded_list)
+    # print(decoded_list)
     decoded_hex_list=[]
     for elem in decoded_list:
         hex_elem = format(int(elem), '02x')
         # hex_elem = hex(elem)
         decoded_hex_list.append(hex_elem)
-    print(decoded_hex_list)
+    # print(decoded_hex_list)
     print("\nData sorted as below ")
 
     input_choice = int(choice)
@@ -251,6 +256,8 @@ def close_connection():
         print_Alarm()
     elif(input_choice == 6):
         print(decoded_list)
+    elif(input_choice == 7):
+        print_HourOutput()
     print("\n")
 
 
@@ -362,6 +369,7 @@ if __name__ == "__main__":
     NUM_OF_SENSORS = 8
     TIME_SIZE_WITH_SEC = 7
     TIME_SIZE_WITHOUT_SEC = 6
+    TIME_SIZE_WITHOUT_MIN_SEC = 5
     NUM_OF_SENSORS = 8
     SIZE_STATIC_FIELD = 6
     HISTORY_PCK_HEADER_SIZE = 4
@@ -408,6 +416,13 @@ if __name__ == "__main__":
         print(f"{input_string}")
 
         message_to_send = form_packet(input_string)
+    elif(int(choice) == 7):
+        SET_REQUEST = '12'
+        start_time = input("Enter Start date&time comma saperated (dd,mm,yyyy,hh)")
+        input_string = f'{STR_ADDR},{SET_REQUEST},{start_time}'
+        print(f"{input_string}")
+
+        message_to_send = form_packet(input_string)
 
     else:
         print(f"Invalid input")
@@ -415,6 +430,6 @@ if __name__ == "__main__":
     if(TEST_HISTORY_RESPONSE):
         choice_to_compare = 2
     else:
-        choice_to_compare = 7
+        choice_to_compare = 17
     if(int(choice) != choice_to_compare):
         tcp_client(server_host, server_port, message_to_send)
