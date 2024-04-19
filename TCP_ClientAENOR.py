@@ -74,6 +74,8 @@ def print_dateTime(dateList,type):
         print(f"Time: \t         {day}.{month}.{yearFullForm}   {hour}:{min}")
     elif(type == 2):
         print(f"Time: \t         {day}.{month}.{yearFullForm}   {hour}")
+    elif(type == 3):
+        print(f"Time: \t         {day}.{month}.{yearFullForm}")
 
 def print_packet(packet_list, valid,historyPacket):
     # print(packet_list)
@@ -101,6 +103,13 @@ def print_packet(packet_list, valid,historyPacket):
     elif historyPacket==2:
         start = TIME_SIZE_WITHOUT_MIN_SEC
         end = TIME_SIZE_WITHOUT_MIN_SEC + SIZE_STATIC_FIELD - 1
+        print(f"Static field: \t {packet_list[start:end]}")
+        print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
+        for i in range(end, len(packet_list), EACH_SENSOR_DATA_SIZE):
+            print(f"\t         {packet_list[i:(i+EACH_SENSOR_DATA_SIZE)]}")
+    elif historyPacket==3:
+        start = TIME_SIZE_WITHOUT_HOUR_MIN_SEC
+        end = TIME_SIZE_WITHOUT_HOUR_MIN_SEC + SIZE_STATIC_FIELD - 1
         print(f"Static field: \t {packet_list[start:end]}")
         print(" ID , VehicleIntesity, Occupancy, CongeDet, TraficDirection, AvgSpeed, AvgLen, AvgDist, ClassiType")
         for i in range(end, len(packet_list), EACH_SENSOR_DATA_SIZE):
@@ -208,6 +217,11 @@ def print_HourOutput():
     print_packet(decoded_list[HEADER_SIZE:-3],True,2)
     print_footer(decoded_list[-3:])
 
+def print_DayOutput():
+    print_header(decoded_list[0:HEADER_SIZE])
+    print_packet(decoded_list[HEADER_SIZE:-3],True,3)
+    print_footer(decoded_list[-3:])
+
 
 def removeDLE():
     skip_next = False
@@ -229,16 +243,16 @@ def removeDLE():
 
 def close_connection():
     print(" Data received with DLE ")
-    # print(recevied_data)
+    print(recevied_data)
     removeDLE()
     print(" \nAfter removing DLE")
-    # print(decoded_list)
+    print(decoded_list)
     decoded_hex_list=[]
     for elem in decoded_list:
         hex_elem = format(int(elem), '02x')
         # hex_elem = hex(elem)
         decoded_hex_list.append(hex_elem)
-    # print(decoded_hex_list)
+    print(decoded_hex_list)
     print("\nData sorted as below ")
 
     input_choice = int(choice)
@@ -258,6 +272,8 @@ def close_connection():
         print(decoded_list)
     elif(input_choice == 7):
         print_HourOutput()
+    elif(input_choice == 8):
+        print_DayOutput()
     print("\n")
 
 
@@ -353,10 +369,10 @@ def form_packet(input_string):
 
 
 if __name__ == "__main__":
-    server_host = "192.168.99.26"
-    server_port = 9001
-    # server_host = "62.232.56.36"
-    # server_port = 4301
+    # server_host = "192.168.99.26"
+    # server_port = 9001
+    server_host = "62.232.56.36"
+    server_port = 4301
     # message_to_send = "02201085564303" // wrong crc order 
     #message_to_send =   "0220108612108318140f1e12108318140f32000074be03"  #outpu from test1.py  
    
@@ -370,6 +386,7 @@ if __name__ == "__main__":
     TIME_SIZE_WITH_SEC = 7
     TIME_SIZE_WITHOUT_SEC = 6
     TIME_SIZE_WITHOUT_MIN_SEC = 5
+    TIME_SIZE_WITHOUT_HOUR_MIN_SEC = 4
     NUM_OF_SENSORS = 8
     SIZE_STATIC_FIELD = 6
     HISTORY_PCK_HEADER_SIZE = 4
@@ -419,6 +436,13 @@ if __name__ == "__main__":
     elif(int(choice) == 7):
         SET_REQUEST = '12'
         start_time = input("Enter Start date&time comma saperated (dd,mm,yyyy,hh)")
+        input_string = f'{STR_ADDR},{SET_REQUEST},{start_time}'
+        print(f"{input_string}")
+
+        message_to_send = form_packet(input_string)
+    elif(int(choice) == 8):
+        SET_REQUEST = '13'
+        start_time = input("Enter Start date&time comma saperated (dd,mm,yyyy)")
         input_string = f'{STR_ADDR},{SET_REQUEST},{start_time}'
         print(f"{input_string}")
 
