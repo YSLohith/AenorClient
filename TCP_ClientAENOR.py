@@ -31,7 +31,7 @@ def get_two_byte_hex_list(input_list):
     hex_list = []
     hex_list_yearCorrected = []
     for elem in input_list:
-        if len(elem) > 2:
+        if len(elem) > 3:
             hex_elem = format(int(elem), '04x')
         else:
             hex_elem = format(int(elem), '02x')
@@ -369,10 +369,10 @@ def form_packet(input_string):
 
 
 if __name__ == "__main__":
-    # server_host = "192.168.99.26"
-    # server_port = 9001
-    server_host = "62.232.56.36"
-    server_port = 4301
+    server_host = "192.168.99.26"
+    server_port = 9001
+    # server_host = "62.232.56.36"
+    # server_port = 4301
     # message_to_send = "02201085564303" // wrong crc order 
     #message_to_send =   "0220108612108318140f1e12108318140f32000074be03"  #outpu from test1.py  
    
@@ -444,6 +444,33 @@ if __name__ == "__main__":
         SET_REQUEST = '13'
         start_time = input("Enter Start date&time comma saperated (dd,mm,yyyy)")
         input_string = f'{STR_ADDR},{SET_REQUEST},{start_time}'
+        print(f"{input_string}")
+        message_to_send = form_packet(input_string)
+        # message_to_send = "02200D1204E807D78103" 
+
+    elif(int(choice) == 9):
+       message_to_send = "022007760103" 
+ 
+    elif(int(choice) == 10):
+        SET_REQUEST = '1'
+        # constant_input = input("enter these values as is 3,1,44,1,2,0,3,0,1,1,8,2")
+        # constant_input = '3,1,44,1,2,0,3,0,1,1,8,2'
+        constant_input = '3,1,0120,2,0,3,0,1,1,8,2'
+        Lenght_ID = '1'
+        Length_threshold = '2,42,0'#input("Enter number of categeries for length, and each threshold ")
+        Speed_ID = '2'
+        Speed_threshold = '3,60,0,90,0'#input("Enter number of categeries for speed, and each threshold ")
+        Num_of_paramter = '3'
+        # param1_value = '1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255'
+        # param2_value = '2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255'
+        # param3_value = '3,255,3,255,3,255,3,255,3,255,3,255,3,255,3,255'
+        param1_value = '1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100'
+        param2_value = '2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100'
+        param3_value = '3,100,3,100,3,100,3,100,3,100,3,100,3,100,3,100'
+
+        input_string = f'{STR_ADDR},{SET_REQUEST},{constant_input},{Lenght_ID},{Length_threshold},{Speed_ID},{Speed_threshold},{Num_of_paramter},{param1_value},{param2_value},{param3_value}'
+        # param3_value = '99,100,2024'
+        # input_string = f'{Num_of_paramter},{param3_value}'
         print(f"{input_string}")
 
         message_to_send = form_packet(input_string)
