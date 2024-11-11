@@ -338,8 +338,8 @@ def tcp_client(host, port, message):
         
 
 def form_packet(input_string):
-        input_list = input_string.split(',')
-
+        input_list = input_string.split(DELIMETER)
+        print(f"input_list = {input_list}")
         hex_list = get_two_byte_hex_list(input_list)
         print(f'hex list: {hex_list}')
 
@@ -375,6 +375,60 @@ def form_packet(input_string):
             return message_to_send
 
 
+def setGeneralPeriod():
+    localString = ''
+    numOfGeneralParam = input(" Enter Number of general params ")
+    localString += numOfGeneralParam + DELIMETER
+    for i in range(int(numOfGeneralParam)):
+        print(" Enter below options \n 1 : for integral period \n 2 : for algo \n 3 for DCDT")
+        General_param_type =input()
+        General_param_type_choice = int(General_param_type)
+        localString += General_param_type + DELIMETER
+        if General_param_type_choice in generalParamTypes:
+            localString += generalParamTypes[General_param_type_choice]()
+        # if i != int(numOfGeneralParam):
+        #     localString += DELIMETER
+
+    return localString
+
+
+def setClassParam():
+    {
+
+    }
+
+def setSensorParam():
+    {
+
+    }
+    
+parameterTypes = {
+     1: setGeneralPeriod,
+     2: setClassParam,
+     3: setSensorParam,
+ }
+
+def setIntegralPeriod():
+    print(" in intergral period ")
+    IntegralPeriod = input("enter integral period in seconds (4digits)")
+    return IntegralPeriod
+    
+def setAlgo():
+    {
+
+    }
+
+def setDHDP():
+    {
+
+    }
+
+generalParamTypes = {
+    1: setIntegralPeriod,
+    2: setAlgo,
+    3: setDHDP,
+}
+
 
 if __name__ == "__main__":
     server_host = "192.168.99.26"
@@ -383,7 +437,6 @@ if __name__ == "__main__":
     # server_port = 4301
     # message_to_send = "02201085564303" // wrong crc order 
     #message_to_send =   "0220108612108318140f1e12108318140f32000074be03"  #outpu from test1.py  
-   
     TEST_HISTORY_RESPONSE = 0
     ETX = '03'
     STX = '02'
@@ -398,6 +451,7 @@ if __name__ == "__main__":
     NUM_OF_SENSORS = 8
     SIZE_STATIC_FIELD = 6
     HISTORY_PCK_HEADER_SIZE = 4
+    DELIMETER = ','
     recevied_data =[]
     if(TEST_HISTORY_RESPONSE):
         # decoded_list= [2, 32, 134, 5, 12, 4, 232, 7, 12, 0, 44, 1, 3, 12, 4, 232, 7, 12, 5, 44, 1, 3, 12, 4, 232, 7, 12, 10, 44, 1, 3, 12, 4, 232, 7, 12, 15, 44, 1, 1, 5, 1, 1, 8, 1, 1, 0, 0, 0, 0, 0, 50, 42, 0, 2, 1, 2, 1, 0, 0, 0, 2, 3, 1, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0, 1, 0, 102, 42, 5, 2, 1, 2, 1, 0, 0, 0, 2, 3, 1, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 1, 12, 4, 232, 7, 12, 20, 44, 1, 31, 137, 3]
@@ -434,14 +488,19 @@ try:
         message_to_send = form_packet(input_string)
 
     elif(int(choice) == 3):
-        # message_to_send = "02200aaca703"  #correct CRC order for LAST period data 
-        message_to_send = "02200aa7ac03"  #correct CRC order for LAST period data 
+        crc_option = input("press 1 to send with correct CRC, \n 0 for wrong CRC  ")
+        if(int(crc_option) == 1):
+            message_to_send = "02200aa7ac03"  #correct CRC order for LAST period data 
+        elif(int(crc_option) == 0):
+            message_to_send = "02200aa7ab03"  #wrong CRC to test exeption message
+        elif(int(crc_option) == 2):
+            message_to_send = "022004466203"  #wrong CRC to test exeption message
     elif(int(choice) == 4):
-        # message_to_send = "02200b8db703"  #correct CRC order for LAST period data 
-        message_to_send = "02200bb78d03"  #correct CRC order for LAST period data 
+        # message_to_send = "02200b8db703"  #correct CRC order for request identification 
+        message_to_send = "02200bb78d03"  #correct CRC order for request identification 
     elif(int(choice) == 5):
-        # message_to_send = "022009cf9703"  #correct CRC order for LAST period data 
-        message_to_send = "02200997cf03"  #correct CRC order for LAST period data 
+        # message_to_send = "022009cf9703"  #correct CRC order for request status and alarm
+        message_to_send = "02200997cf03"  #correct CRC order for request status and alarm
     elif(int(choice) == 6):
         SET_REQUEST = '03'
         start_time = input("Enter set date&time comma saperated (dd,mm,yyyy,hh,min,sec)")
@@ -471,24 +530,65 @@ try:
         SET_REQUEST = '1'
         # constant_input = input("enter these values as is 3,1,44,1,2,0,3,0,1,1,8,2")
         # constant_input = '3,1,44,1,2,0,3,0,1,1,8,2'
-        constant_input = '3,1,0120,2,0,3,0,1,1,8,2'
+        # constant_input = '3,1,0300,2,0,3,0,1,1,8,2'
+        constant_input = '3,1,0180,2,0,3,0,1,1,8,2'
         Lenght_ID = '1'
         Length_threshold = '2,42,0'#input("Enter number of categeries for length, and each threshold ")
         Speed_ID = '2'
         Speed_threshold = '3,60,0,90,0'#input("Enter number of categeries for speed, and each threshold ")
         Num_of_paramter = '3'
-        # param1_value = '1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255'
-        # param2_value = '2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255'
-        # param3_value = '3,255,3,255,3,255,3,255,3,255,3,255,3,255,3,255'
-        param1_value = '1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100'
-        param2_value = '2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100'
-        param3_value = '3,100,3,100,3,100,3,100,3,100,3,100,3,100,3,100'
+        param1_value = '1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255,1,255,255,255,255,255,255'
+        param2_value = '2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255,2,255,255'
+        param3_value = '3,255,3,255,3,255,3,255,3,255,3,255,3,255,3,255'
+        # param1_value = '1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100,1,100,100,100,100,100,100'
+        # param2_value = '2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100,2,100,100'
+        # param3_value = '3,100,3,100,3,100,3,100,3,100,3,100,3,100,3,100'
 
         input_string = f'{STR_ADDR},{SET_REQUEST},{constant_input},{Lenght_ID},{Length_threshold},{Speed_ID},{Speed_threshold},{Num_of_paramter},{param1_value},{param2_value},{param3_value}'
         # param3_value = '99,100,2024'
         # input_string = f'{Num_of_paramter},{param3_value}'
         print(f"{input_string}")
 
+        message_to_send = form_packet(input_string)
+    
+    elif(int(choice) == 11):
+        SET_REQUEST = '2'
+        param_string = ''
+       
+        Num_of_paramter = input("Enter number of parameters to set ")
+        param_string = Num_of_paramter + DELIMETER
+        for i in range(int(Num_of_paramter)):
+           General_params_type =  input("Enter parameters type ")
+           param_string += General_params_type + DELIMETER
+           param_type_choice = int(General_params_type)
+           print(f"param_type_choice is {param_type_choice}")
+           if param_type_choice in parameterTypes:
+               param_string += parameterTypes[param_type_choice]()
+           else:
+               print("invalid param_type_choice")    
+
+        # Number_of_general_params = '1'
+        # Param_type = '1'
+        # Interval_period = input('enter interval period in seconds with 4 digits: ')
+        # input_string = f'{STR_ADDR},{SET_REQUEST},{Num_of_paramter},{General_params_type},{Number_of_general_params},{Param_type},{Interval_period}'
+        input_string = f'{STR_ADDR},{SET_REQUEST},{param_string}'
+        print(f" intput string = {input_string}")
+        message_to_send = form_packet(input_string)
+
+    elif(int(choice) == 12):
+        SET_REQUEST = '8'
+        param_string = ''
+        General_params_type =  input("Enter parameters type \n 1:General class \n 2:Specific class 3:Sensor class\n")
+        if(int(General_params_type) == 2 or int(General_params_type) == 3):
+            params_value =  input("Enter sensor type: 1 for DOUBLE DET:  ")
+            param_string += General_params_type + DELIMETER + params_value
+        elif(int(General_params_type) == 1):
+            param_string += General_params_type
+        else:
+            print(" invalid param type: it is either 1.2 or 3")
+
+        input_string = f'{STR_ADDR},{SET_REQUEST},{param_string}'
+        print(f" intput string = {input_string}")
         message_to_send = form_packet(input_string)
 
     else:
