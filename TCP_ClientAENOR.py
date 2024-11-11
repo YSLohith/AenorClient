@@ -1,6 +1,6 @@
 import socket
 import time
-
+import sys
 
 def add_dle(input_list):
     dle_out = []
@@ -282,7 +282,7 @@ def tcp_client(host, port, message):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
-        socket.timeout(30)
+        client_socket.settimeout(30)
         # Connect to the server
         client_socket.connect((host, port))
 
@@ -295,24 +295,31 @@ def tcp_client(host, port, message):
         print(f"sent: {message}  ")
 
         while True:
-            # Receive data from the server
-            data = client_socket.recv(1500).hex()
-            for i in range(0, len(data), 2):
-                data_hex = data[i:i+2]
-                data_decimal = int(data_hex, 16)
-                recevied_data.append(data_hex)
-                # print(f"{data_decimal} ",end='')
-            # print("Received from server:", data)
-            
-            if data_decimal==CLOSE_ETX:
-                print(f"\n Received ETX='{ETX}'. So closing the connection.")
-                print("Resonse from server is \n")
-                break  
+            try:
 
-    except socket.timeout:
-        print("\nTimeout closing connection")     
-        client_socket.close()
-        close_connection()
+                # Receive data from the server
+                data = client_socket.recv(1500).hex()
+                if not data:
+                    print("No more data received, closing connection.")
+                    break
+
+                for i in range(0, len(data), 2):
+                    data_hex = data[i:i+2]
+                    data_decimal = int(data_hex, 16)
+                    recevied_data.append(data_hex)
+                    # print(f"{data_decimal} ",end='')
+                # print("Received from server:", data)
+                
+                if data_decimal==CLOSE_ETX:
+                    print(f"\n Received ETX='{ETX}'. So closing the connection.")
+                    print("Resonse from server is \n")
+                    break  
+
+            except socket.timeout:
+                print("\nTimeout closing connection")     
+                # client_socket.close()
+                # close_connection()
+                break
 
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt: Closing the connection.")
@@ -321,12 +328,13 @@ def tcp_client(host, port, message):
 
     except Exception as e:
         print(f"Error: {e}")
-        client_socket.close()
-        close_connection()        
+        # client_socket.close()
+        # close_connection()        
 
     finally:
         client_socket.close()
         close_connection()
+
         
 
 def form_packet(input_string):
@@ -402,7 +410,15 @@ if __name__ == "__main__":
 
     STR_ADDR = '32'
     INDICATION = '0000'
-    
+
+try:
+    if len(sys.argv) < 2:
+        print("Usage: python script.py <Destination IP>")
+        sys.exit(1)
+
+    server_host = sys.argv[1]
+    print(f"input IP is {server_host}")
+
     choice = input(" type number 1 to 6 to send appropriate request:")
 
     if(int(choice) == 1):
@@ -484,3 +500,7 @@ if __name__ == "__main__":
         choice_to_compare = 17
     if(int(choice) != choice_to_compare):
         tcp_client(server_host, server_port, message_to_send)
+
+except KeyboardInterrupt:
+    print("\nExiting the program...")
+    sys.exit(0)  # Exiting the program with status code 0
